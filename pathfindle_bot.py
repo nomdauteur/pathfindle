@@ -69,6 +69,8 @@ def present_phrase(chat_id, phrase_id):
     except mariadb.Error as e:
         journal.write(f"Error in db: {e}") 
 
+    variables[chat_id]['variants'] = wordlist
+
     msg=bot.send_message(chat_id, f"{phrase}\n{source_name}, {source_author}", reply_markup=set_keyboard(wordlist, 1 if variables[chat_id]['pointer']>0 else 0, 1 if variables[chat_id]['pointer']<len(variables[chat_id]['phrases'])-1 else 0))
     bot.register_next_step_handler(msg, phrase_navigator)
 
@@ -99,10 +101,11 @@ def start_handler(message):
     # variables[chat_id]['mode']=mode
     variables[chat_id]['path'] = []
     #variables[chat_id][path]: [word1, word2 ...], when path[len-1]=tgt_word -> win
-    variables[chat_id]['phrases'] = {}
+    variables[chat_id]['phrases'] = []
     # variables[chat_id][phrases] [path[len(path)-1]]: [ph1_id, ph2_id]
     variables[chat_id]['pointer'] = 0
     # variables[chat_id][pointer]: which phrase
+    variables[chat_id]['variants'] = []
 
     
     lng = telebot.types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True, one_time_keyboard=True)
@@ -129,6 +132,7 @@ def askLang(message):
         cur.execute('select game_id, start_words, target_word from routelebot_games where lang=? ORDER BY RAND() LIMIT 1', (variables[chat_id]['mode'],))
         variables[chat_id]['g_id'], variables[chat_id]['start_words'], variables[chat_id]['target_word'] = cur.fetchone()
         journal.write(variables)
+        variables[chat_id]['variants'] = variables[chat_id]['start_words'].split(', ')
     except mariadb.Error as e:
         journal.write(f"Error in db: {e}")
 
@@ -145,12 +149,13 @@ def set_phrases(message):
     if (message.text == '/help'):
         send_help(chat_id)
         return
-    if (message.text is None):
-        msg = bot.send_message(chat_id, f'Input should not be empty' if variables[chat_id]['mode'] == 'en' else f'Введите что-нибудь')
+    if (message.text is None or message.text not in variables[chat_id]['variants']):
+        msg = bot.send_message(chat_id, f'Input should not be arbitrary' if variables[chat_id]['mode'] == 'en' else f'Вы ввели что-то недопустимое')
         bot.register_next_step_handler(msg, set_phrases)
     variables[chat_id]['path'].append(message.text)
     variables[chat_id]['pointer'] = 0
     variables[chat_id]['phrases'] = get_phrases_by_word(message.text)
+
     journal.write(f"phrases re {variables[chat_id]['phrases']}")
     journal.write(f"phrase id ll be {variables[chat_id]['phrases'][variables[chat_id]['pointer']]}")
     present_phrase(chat_id,variables[chat_id]['phrases'][variables[chat_id]['pointer']])
@@ -162,8 +167,8 @@ def phrase_navigator (message):
     if (message.text == '/help'):
         send_help(chat_id)
         return
-    if (message.text is None):
-        msg = bot.send_message(chat_id, f'Input should not be empty' if variables[chat_id]['mode'] == 'en' else f'Введите что-нибудь')
+    if (message.text is None or message.text not in variables[chat_id]['variants']):
+        msg = bot.send_message(chat_id, f'Input should not be arbitrary' if variables[chat_id]['mode'] == 'en' else f'Вы ввели что-то недопустимое')
         bot.register_next_step_handler(msg, set_phrases)
     
     if (message.text == '<-'):
