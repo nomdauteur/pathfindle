@@ -59,7 +59,6 @@ def get_phrases_by_word(word): # 10 or less
 
 
 def present_phrase(chat_id, phrase_id):
-    journal.write('I present phrases')
     try:
         cur.execute("select phrase, source_name, source_author from routelebot_quotes where id=?",(phrase_id,))
         phrase, source_name, source_author=cur.fetchone()
@@ -69,9 +68,17 @@ def present_phrase(chat_id, phrase_id):
     except mariadb.Error as e:
         journal.write(f"Error in db: {e}") 
 
-    variables[chat_id]['variants'] = wordlist
+    variables[chat_id]['variants'] = [*wordlist]
+    last_flg=1 if variables[chat_id]['pointer']>0 else 0
+    next_flg=1 if variables[chat_id]['pointer']<len(variables[chat_id]['phrases'])-1 else 0
+    if (last_flg):
+        variables[chat_id]['variants'].append('<-')
+        
+    if (next_flg):
+        variables[chat_id]['variants'].append('->')
+        
 
-    msg=bot.send_message(chat_id, f"{phrase}\n{source_name}, {source_author}", reply_markup=set_keyboard(wordlist, 1 if variables[chat_id]['pointer']>0 else 0, 1 if variables[chat_id]['pointer']<len(variables[chat_id]['phrases'])-1 else 0))
+    msg=bot.send_message(chat_id, f"{phrase}\n{source_name}, {source_author}", reply_markup=set_keyboard(wordlist, last_flg, next_flg))
     bot.register_next_step_handler(msg, phrase_navigator)
 
     #here go write phrase n construct menu out of words, next phrase, prev??
@@ -131,7 +138,6 @@ def askLang(message):
     try:
         cur.execute('select game_id, start_words, target_word from routelebot_games where lang=? ORDER BY RAND() LIMIT 1', (variables[chat_id]['mode'],))
         variables[chat_id]['g_id'], variables[chat_id]['start_words'], variables[chat_id]['target_word'] = cur.fetchone()
-        journal.write(variables)
         variables[chat_id]['variants'] = variables[chat_id]['start_words'].split(', ')
     except mariadb.Error as e:
         journal.write(f"Error in db: {e}")
@@ -143,21 +149,18 @@ def askLang(message):
     bot.register_next_step_handler(msg, set_phrases)
 
 def set_phrases(message):
-    journal.write('I set phrases')
-    #journal.write(message)
     chat_id = message.chat.id
     if (message.text == '/help'):
         send_help(chat_id)
         return
     if (message.text is None or message.text not in variables[chat_id]['variants']):
-        msg = bot.send_message(chat_id, f'Input should not be arbitrary' if variables[chat_id]['mode'] == 'en' else f'Вы ввели что-то недопустимое')
-        bot.register_next_step_handler(msg, set_phrases)
+        msg = bot.send_message(chat_id, f'Input should not be arbitrary, input is {message.text}' if variables[chat_id]['mode'] == 'en' else f'Вы ввели что-то недопустимое')
+        bot.register_next_step_handler(msg, phrase_navigator)
+        return 
     variables[chat_id]['path'].append(message.text)
     variables[chat_id]['pointer'] = 0
     variables[chat_id]['phrases'] = get_phrases_by_word(message.text)
 
-    journal.write(f"phrases re {variables[chat_id]['phrases']}")
-    journal.write(f"phrase id ll be {variables[chat_id]['phrases'][variables[chat_id]['pointer']]}")
     present_phrase(chat_id,variables[chat_id]['phrases'][variables[chat_id]['pointer']])
 
     
@@ -167,17 +170,12 @@ def phrase_navigator (message):
     if (message.text == '/help'):
         send_help(chat_id)
         return
-    if (message.text is None or message.text not in variables[chat_id]['variants']):
-        msg = bot.send_message(chat_id, f'Input should not be arbitrary' if variables[chat_id]['mode'] == 'en' else f'Вы ввели что-то недопустимое')
-        bot.register_next_step_handler(msg, set_phrases)
     
     if (message.text == '<-'):
-        journal.write('Get to prev')
         variables[chat_id]['pointer'] = variables[chat_id]['pointer'] - 1
         present_phrase(chat_id,variables[chat_id]['phrases'][variables[chat_id]['pointer']])
         return
     if (message.text == '->'):
-        journal.write('Get to next')
         variables[chat_id]['pointer'] = variables[chat_id]['pointer'] + 1
         present_phrase(chat_id,variables[chat_id]['phrases'][variables[chat_id]['pointer']])
         return
@@ -188,7 +186,6 @@ def phrase_navigator (message):
         return
 
     else:
-        journal.write('Message was word')
         set_phrases(message)
 
 
