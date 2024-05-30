@@ -33,7 +33,8 @@ cur = conn.cursor()
 
 
 def send_help(chat_id):
-    bot.send_message(chat_id,'Help does not exist here yet')
+    help='''This is a game for travelling through book mazes. Your goal is to find a path from start word to the target one. Note that this path doesn't have to be the shortest, as you can just wander and marvel.\nFor every word bot gives you up to ten different book quotes with this word. Each phrase is divided into words, which you can use to move between steps (for simplicity reasons, you can't use some of the most frequent words, such as prepositions). Use arrows below the word list to switch between phrases.\nBy the way, you can suggest your favourite, or even your own, book quotes, so that other users may discover them. <a href="https://docs.google.com/forms/d/e/1FAIpQLSfZkkvVofV9laVwnLPi6oCtUUrHUFDrvqKxIfWstfFPSiP0WQ/viewform">You can submit them here!</a>\nNow you can press /start to play.\n\nПеред вами игра-странствие по лабиринтам из книг. Вам нужно найти путь, соединяющий исходное слово с целевым. Путь не обязан быть кратчайшим — можно погулять и полюбоваться.\nНа каждое слово бот предлагает вам до десяти фраз из разных книг, где оно содержится. Каждая фраза, в свою очередь, разбита на слова, которые можно использовать для следующего хода (для простоты нельзя ходить предлогами или слишком употребительными словами). Чтобы переключаться между фразами, используйте стрелки в нижнем ряду.\nКроме того, можно предложить боту цитату из своей любимой — или просто своей — книги, чтобы другие игроки могли ее найти. <a href="https://docs.google.com/forms/d/e/1FAIpQLSfZkkvVofV9laVwnLPi6oCtUUrHUFDrvqKxIfWstfFPSiP0WQ/viewform">Присылайте цитаты сюда!</a>\nНажмите /start, чтобы сыграть!'''
+    bot.send_message(chat_id, help, parse_mode='HTML')
 
 def set_keyboard(buttons_list, need_prev=0, need_next=0):
     w=(len(buttons_list) // 3) + 1
@@ -78,10 +79,17 @@ def present_phrase(chat_id, phrase_id):
         variables[chat_id]['variants'].append('->')
         
 
-    msg=bot.send_message(chat_id, f"{phrase}\n{source_name}, {source_author}", reply_markup=set_keyboard(wordlist, last_flg, next_flg))
+
+    msg=bot.send_message(chat_id, f"{phrase}\n\n{source_author}, <i>{source_name}</i>" , reply_markup=set_keyboard(wordlist, last_flg, next_flg), parse_mode='HTML')
     bot.register_next_step_handler(msg, phrase_navigator)
 
     #here go write phrase n construct menu out of words, next phrase, prev??
+
+
+lng = telebot.types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True, one_time_keyboard=True)
+lng_btn1 = telebot.types.KeyboardButton('ENG')
+lng_btn2 = telebot.types.KeyboardButton('RUS')
+lng.add(lng_btn1, lng_btn2)
 
 # handlers
 
@@ -115,10 +123,7 @@ def start_handler(message):
     variables[chat_id]['variants'] = []
 
     
-    lng = telebot.types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True, one_time_keyboard=True)
-    lng_btn1 = telebot.types.KeyboardButton('ENG')
-    lng_btn2 = telebot.types.KeyboardButton('RUS')
-    lng.add(lng_btn1, lng_btn2)
+    
     msg = bot.send_message(chat_id, 'Выберите язык | Choose your language', reply_markup=lng)
 
     bot.register_next_step_handler(msg, askLang)
@@ -126,11 +131,13 @@ def start_handler(message):
 def askLang(message):
     chat_id = message.chat.id
     text = message.text
-    if (text is None or text not in ['ENG', 'RUS']):
-        msg=bot.send_message(chat_id, 'Input must be correct!')
-        bot.register_next_step_handler(msg, askLang)
     if (message.text == '/help'):
         send_help(chat_id)
+        return
+    if (text is None or text not in ['ENG', 'RUS']):
+        msg=bot.send_message(chat_id, 'Select one of two languages!', reply_markup=lng)
+        bot.register_next_step_handler(msg, askLang)
+        return
     variables[chat_id]['mode'] = 'ru' if text == 'RUS' else 'en'
     #daily or non-daily will be here, if ever
 
@@ -144,7 +151,7 @@ def askLang(message):
 
 
     
-    msg = bot.send_message(chat_id, f'Your goal is to reach "%s", choose your start:' % variables[chat_id]['target_word'] if variables[chat_id]['mode'] == 'en' else f'Ваша цель — получить слово "%s", выберите слово для старта:' % variables[chat_id]['target_word'], reply_markup=set_keyboard(variables[chat_id]['start_words'].split(', ')))
+    msg = bot.send_message(chat_id, f'Target word is: "%s"\nChoose your start word:' % variables[chat_id]['target_word'] if variables[chat_id]['mode'] == 'en' else f'Ваша цель — получить слово "%s"\nВыберите слово для старта:' % variables[chat_id]['target_word'], reply_markup=set_keyboard(variables[chat_id]['start_words'].split(', ')))
     
     bot.register_next_step_handler(msg, set_phrases)
 
@@ -154,7 +161,7 @@ def set_phrases(message):
         send_help(chat_id)
         return
     if (message.text is None or message.text not in variables[chat_id]['variants']):
-        msg = bot.send_message(chat_id, f'Input should not be arbitrary, input is {message.text}' if variables[chat_id]['mode'] == 'en' else f'Вы ввели что-то недопустимое')
+        msg = bot.send_message(chat_id, f'Word must appear in the list, try again.' if variables[chat_id]['mode'] == 'en' else f'Вы ввели слово, которое отсутствует в списке. Попробуйте еще раз!', reply_markup=set_keyboard(variables[chat_id]['variants']))
         bot.register_next_step_handler(msg, phrase_navigator)
         return 
     variables[chat_id]['path'].append(message.text)
@@ -180,9 +187,9 @@ def phrase_navigator (message):
         present_phrase(chat_id,variables[chat_id]['phrases'][variables[chat_id]['pointer']])
         return
 
-    if (message.text == variables[chat_id]['target_word']):
+    if ((message.text == variables[chat_id]['target_word']) and message.text in variables[chat_id]['variants']):
         variables[chat_id]['path'].append(message.text)
-        bot.send_message(chat_id, f"You won. Your path was: {variables[chat_id]['path']}\n Send /start to play again." if variables[chat_id]['mode'] == 'en' else f"Вы выиграли! Ваш путь: {variables[chat_id]['path']}\n Нажмите /start, чтобы сыграть еще раз!")
+        bot.send_message(chat_id, f"You won\\. \n```\nYour path in Pathfindle was:\n{'->'.join(variables[chat_id]['path'])}```\nSend /start to play again\\." if variables[chat_id]['mode'] == 'en' else f"Вы выиграли\\! \n```\nВаш путь в Pathfindle:\n{'->'.join(variables[chat_id]['path'])}```\nНажмите /start, чтобы сыграть еще раз\\!", parse_mode='MarkdownV2')
         return
 
     else:
