@@ -37,6 +37,7 @@ def send_help(chat_id):
     bot.send_message(chat_id, help, parse_mode='HTML')
 
 def set_keyboard(buttons_list, need_prev=0, need_next=0):
+    journal.write(f'buttons are {buttons_list}')
     w=(len(buttons_list) // 3) + 1
     buttons = [telebot.types.KeyboardButton(i) for i in buttons_list]
     keyboard = telebot.types.ReplyKeyboardMarkup(row_width=w, resize_keyboard=True, one_time_keyboard=True)
@@ -79,7 +80,7 @@ def present_phrase(chat_id, phrase_id):
         variables[chat_id]['variants'].append('->')
         
 
-
+    bot.send_message(chat_id, f"Reminder: you need to find <b><i>{variables[chat_id]['target_word']}</i></b>" if variables[chat_id]['mode'] == 'en' else f"Напоминаем: ваша цель — найти слово «<b>{variables[chat_id]['target_word']}</b>»", parse_mode='HTML')
     msg=bot.send_message(chat_id, f"{phrase}\n\n{source_author}, <i>{source_name}</i>" , reply_markup=set_keyboard(wordlist, last_flg, next_flg), parse_mode='HTML')
     bot.register_next_step_handler(msg, phrase_navigator)
 
@@ -131,6 +132,9 @@ def start_handler(message):
 def askLang(message):
     chat_id = message.chat.id
     text = message.text
+    if (message.text == '/start'):
+        start_handler(message)
+        return
     if (message.text == '/help'):
         send_help(chat_id)
         return
@@ -139,11 +143,30 @@ def askLang(message):
         bot.register_next_step_handler(msg, askLang)
         return
     variables[chat_id]['mode'] = 'ru' if text == 'RUS' else 'en'
+
+    msg=bot.send_message(chat_id, 'Select mode' if (variables[chat_id]['mode']=='en') else 'Выберите режим', reply_markup=set_keyboard(['weekly' if (variables[chat_id]['mode']=='en') else 'еженедельный', 'random' if (variables[chat_id]['mode']=='en') else 'случайный']))
+    bot.register_next_step_handler(msg, askMode)
+
+def askMode(message):
+    chat_id = message.chat.id
+    text = message.text
+    if (message.text == '/start'):
+        start_handler(message)
+        return
+    if (message.text == '/help'):
+        send_help(chat_id)
+        return
+    journal.write(f"mode is {message.text}")
+    isRand=(message.text not in ('weekly', 'еженедельный'))
+    journal.write(f"mode is {isRand}")
     #daily or non-daily will be here, if ever
 
     #get id
     try:
-        cur.execute('select game_id, start_words, target_word from routelebot_games where lang=? ORDER BY RAND() LIMIT 1', (variables[chat_id]['mode'],))
+        if (isRand):
+            cur.execute('select game_id, start_words, target_word from routelebot_games where lang=? ORDER BY RAND() LIMIT 1', (variables[chat_id]['mode'],))
+        else:
+            cur.execute('select game_id, start_words, target_word from routelebot_games where lang=? and (curdate() between date_played_from and date_add(date_played_from, interval 7 day))', (variables[chat_id]['mode'],))
         variables[chat_id]['g_id'], variables[chat_id]['start_words'], variables[chat_id]['target_word'] = cur.fetchone()
         variables[chat_id]['variants'] = variables[chat_id]['start_words'].split(', ')
     except mariadb.Error as e:
@@ -151,12 +174,15 @@ def askLang(message):
 
 
     
-    msg = bot.send_message(chat_id, f'Target word is: "%s"\nChoose your start word:' % variables[chat_id]['target_word'] if variables[chat_id]['mode'] == 'en' else f'Ваша цель — получить слово "%s"\nВыберите слово для старта:' % variables[chat_id]['target_word'], reply_markup=set_keyboard(variables[chat_id]['start_words'].split(', ')))
+    msg = bot.send_message(chat_id, f'Target word is: <b><i>%s</i></b>\nChoose your start word:' % variables[chat_id]['target_word'] if variables[chat_id]['mode'] == 'en' else f'Ваша цель — получить слово «<b>%s</b>»\nВыберите слово для старта:' % variables[chat_id]['target_word'], reply_markup=set_keyboard(variables[chat_id]['start_words'].split(', ')), parse_mode='HTML')
     
     bot.register_next_step_handler(msg, set_phrases)
 
 def set_phrases(message):
     chat_id = message.chat.id
+    if (message.text == '/start'):
+        start_handler(message)
+        return
     if (message.text == '/help'):
         send_help(chat_id)
         return
@@ -174,6 +200,9 @@ def set_phrases(message):
     
 def phrase_navigator (message):
     chat_id=message.chat.id
+    if (message.text == '/start'):
+        start_handler(message)
+        return
     if (message.text == '/help'):
         send_help(chat_id)
         return
@@ -189,7 +218,7 @@ def phrase_navigator (message):
 
     if ((message.text == variables[chat_id]['target_word']) and message.text in variables[chat_id]['variants']):
         variables[chat_id]['path'].append(message.text)
-        bot.send_message(chat_id, f"You won\\. \n```\nYour path in Pathfindle was:\n{'->'.join(variables[chat_id]['path'])}```\nSend /start to play again\\." if variables[chat_id]['mode'] == 'en' else f"Вы выиграли\\! \n```\nВаш путь в Pathfindle:\n{'->'.join(variables[chat_id]['path'])}```\nНажмите /start, чтобы сыграть еще раз\\!", parse_mode='MarkdownV2')
+        bot.send_message(chat_id, f"You won\\. Here is your result to share\\. \n```\nMy path in #Pathfindle was:\n{'->'.join(variables[chat_id]['path'])}\nJoin me and find your own\\!```\nSend /start to play again\\." if variables[chat_id]['mode'] == 'en' else f"Вы выиграли\\! Будем рады, если вы поделитесь своим результатом:\n```\nМой путь в Pathfindle:\n{'->'.join(variables[chat_id]['path'])}\nНайдете свой\\?```\nНажмите /start, чтобы сыграть еще раз\\!", parse_mode='MarkdownV2')
         return
 
     else:
