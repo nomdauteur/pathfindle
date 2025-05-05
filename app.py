@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import itertools
 from datetime import datetime
+import ssl
 
 import pymorphy3
 import spacy
@@ -44,6 +45,10 @@ except mariadb.Error as e:
 cur = conn.cursor()
 
 app = FastAPI()
+
+ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+ssl_context.load_cert_chain('/home/bots/certs/cert.pem', keyfile='/home/bots/certs/key.pem')
+
 origins = [
     "*"
 ]
