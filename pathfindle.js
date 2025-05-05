@@ -38,7 +38,7 @@ function setGoal(phraseJson) {
     const userAction = 
      async () => {
   var randWord= filtered_words[Math.floor((Math.random()*filtered_words.length))];
-  const r = await fetch('http://185.22.62.80:8000/possibleGoals/'+randWord+'/2');
+  const r = await fetch('https://185.22.62.80:8000/possibleGoals/'+randWord+'/2');
   j = await r.json();
   target_word= j[Math.floor((Math.random()*j.length))];
   console.log("Set target word to "+target_word);
@@ -60,11 +60,11 @@ function nextPhrases(word) {
     console.log("You summoned "+word);
     const userAction = 
      async () => {
-  const response = await fetch('http://185.22.62.80:8000/phraseIds/'+word);
+  const response = await fetch('https://185.22.62.80:8000/phraseIds/'+word);
   const ids = await response.json(); 
   console.log(ids);
   for (const id of ids) {
-    const resp = await fetch('http://185.22.62.80:8000/phrase/'+id);
+    const resp = await fetch('https://185.22.62.80:8000/phrase/'+id);
     current_phrases.push(await resp.json()); 
   }
   console.log(current_phrases);
@@ -231,7 +231,7 @@ while (document.getElementById("game").firstChild) {
 
      var phrase;
   do {
-  const response = await fetch('http://185.22.62.80:8000/randomPhrase/'+document.getElementById("game_lang").textContent);
+  const response = await fetch('https://185.22.62.80:8000/randomPhrase/'+document.getElementById("game_lang").textContent);
   phrase = await response.json(); 
 
   while(phrase == null) sleep(100);
