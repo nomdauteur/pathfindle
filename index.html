@@ -1,0 +1,129 @@
+<!DOCTYPE>
+<html oncontextmenu="return false">
+    <head>
+        <meta charset="UTF-16">
+        <!--<meta http-equiv="refresh" content="0.5" > -->
+        <meta name="Description" CONTENT="Pathfindle">
+        <meta name="viewport" content="height=device-height, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+        <script src="/sdk.js"></script>
+
+       
+
+    <title>Pathfindle</title>
+   
+    <style>
+        .everything {
+          display: flex;
+          width: 100vw;
+          height: auto;
+
+        }
+
+        body {
+          -webkit-touch-callout: none; /* iOS Safari */
+    -webkit-user-select: none; /* Safari */
+     -khtml-user-select: none; /* Konqueror HTML */
+       -moz-user-select: none; /* Old versions of Firefox */
+        -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Non-prefixed version, currently
+                                  supported by Chrome, Edge, Opera and Firefox */
+        }
+
+        
+
+        label {
+            font-size: 3vmin;
+            text-align:left;
+        }
+
+        
+        .proceed
+        {
+          position: fixed;
+          font-size: 2vmin;
+            text-align: center;
+        bottom: 0px;
+        right: 1vw;
+        text-align:center;
+        margin:auto;
+        width: 15vw;
+        height: 5vh;
+        }
+
+        .button
+        {
+          position: relative;
+          font-size: 2vmin;
+            text-align: center;
+        bottom: 0px;
+        left: 1vw;
+        margin:auto;
+        width: 10vw;
+        height: 5vh;
+        border-radius: 1vmin;
+        }
+
+        button
+        {
+          position: relative;
+           font-size: 2vmin;
+            text-align: center;
+        margin:auto;
+        border-radius: 1vmin;
+        }
+
+        
+
+      .alert
+    {
+        z-index:100;
+        display: flex;
+        width:50vw;
+        height: auto;
+        overflow: hidden;
+        background-color: #ffffff;
+        margin:auto;
+        position:absolute;
+        border: 1px solid;
+        border-radius: 5px;
+        word-wrap: break-word;
+        white-space:pre-wrap;
+        
+    }
+
+    .alert p {
+    
+    padding: 0px;
+}
+.alert input, 
+.alert select, 
+.alert label {
+    
+    margin: 0px;
+}
+.alert label {
+    text-align: left;
+}
+
+a {
+  text-decoration: underline;
+}
+    </style>
+
+    <script src="functions.js"></script>
+    <script src="pathfindle.js"></script>
+    
+    </head>
+    <body onload="load()" onresize="return false">
+      
+    </script>
+      <div id="game" style="display:table; background-image: url(background.jpg); background-size: cover; width:98vw; overflow: hidden; word-wrap: break-word;white-space:pre-wrap;" class="everything" ></div>
+      <p id="lang" style="bottom:0px; left:95vw; position:fixed; display:none;">Language</p>
+      <p id="game_lang" style="bottom:0px; left:95vw; position:fixed; display:none;">Language</p>
+
+    
+    <button id="helper" onclick="showHelp()" class="button" style="left:80vw; position:relative;">Помощь</button>    
+    </body>
+    
+</html>
